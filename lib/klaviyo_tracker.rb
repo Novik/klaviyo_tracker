@@ -132,7 +132,7 @@ module KlaviyoTracker
   end
 
   def client
-    @@client ||= Klaviyo::Client.new(@@api_key)
+    @@client ||= Klaviyo::Client.new(@@api_key,'https://a.klaviyo.com/')
   end
 
 end

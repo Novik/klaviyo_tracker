@@ -24,5 +24,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rake", ">= 12.3.3"
 
   spec.add_dependency(%q<spree_core>.freeze, ["~> 3.0.1"])
-  spec.add_dependency "klaviyo"
+#  spec.add_dependency "klaviyo" # use Gemfile for include https://github.com/klaviyo/ruby-klaviyo
 end
