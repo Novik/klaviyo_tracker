@@ -27,6 +27,7 @@ module KlaviyoTracker
     if REASON_MESSAGES.key?(reason) 
       client.track( REASON_MESSAGES[reason],
 #      debug_track( REASON_MESSAGES[reason],
+        email: order.email,
         properties: properties(order),
         customer_properties: customer_properties(order),
         time: order.updated_at
@@ -35,6 +36,7 @@ module KlaviyoTracker
         order.line_items.map do |li|
           client.track( REASON_MESSAGES[:ordered_product],
 #          debug_track( REASON_MESSAGES[reason],
+            email: order.email,
             properties: product_properties(li),
             customer_properties: customer_properties(order),
             time: order.updated_at
