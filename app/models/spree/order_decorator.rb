@@ -1,12 +1,12 @@
 Spree::Order.class_eval do
 
   state_machine do
-    after_transition from: :cart, do: :track_started_checkout
+    before_transition to: [:address,:delivery,:payment,:confirm,:complete], do: :track_started_checkout
     after_transition to: :complete, do: :track_placed_order
     after_transition to: :canceled, do: :track_cancelled_order
   end
 
-  def track_started_checkout
+  def track_started_checkout(t)
     KlaviyoTracker::track(self,:started_checkout) if user.present?
   end
 

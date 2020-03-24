@@ -4,6 +4,7 @@ require "klaviyo_tracker/engine"
 require 'klaviyo'
 
 module KlaviyoTracker
+  class KlaviyoTrackerError < StandardError; end
 
   extend self
 
@@ -14,6 +15,7 @@ module KlaviyoTracker
   {
     started_checkout: 'Started Checkout',
     placed: 'Placed Order',
+    added_to_cart: 'Added To Cart',
     ordered_product: 'Ordered Product',
     cancelled: 'Cancelled Order',
     fulfilled: 'Fulfilled Order'
@@ -23,26 +25,25 @@ module KlaviyoTracker
     yield self
   end
 
-  def track(order,reason)
-    if REASON_MESSAGES.key?(reason) 
-      client.track( REASON_MESSAGES[reason],
-#      debug_track( REASON_MESSAGES[reason],
-        email: order.email,
-        properties: properties(order),
-        customer_properties: customer_properties(order),
-        time: order.updated_at
-      )
-      if reason == :placed 
-        order.line_items.map do |li|
-          client.track( REASON_MESSAGES[:ordered_product],
-#          debug_track( REASON_MESSAGES[reason],
-            email: order.email,
-            properties: product_properties(li),
-            customer_properties: customer_properties(order),
-            time: order.updated_at
-          )
+  def track(order,reason,param = nil)
+    case reason
+      when :started_checkout,:placed,:cancelled,:fulfilled,:added_to_cart
+        client.track( REASON_MESSAGES[reason],
+          email: order.email,
+          properties: reason == :added_to_cart ? cart_properties(order,param) : properties(order),
+          customer_properties: customer_properties(order),
+          time: order.updated_at
+        )
+        if reason == :placed 
+          order.line_items.map do |li|
+            client.track( REASON_MESSAGES[:ordered_product],
+              email: order.email,
+              properties: product_properties(li),
+              customer_properties: customer_properties(order),
+              time: order.updated_at
+            )
+          end
         end
-      end
     end
   end
 
@@ -77,6 +78,20 @@ module KlaviyoTracker
     }
   end
 
+  def cart_properties(order,variant)
+    properties(order).merge(
+    {
+      "AddedItemProductID": variant.id,
+      "AddedItemSKU": variant.sku,
+      "AddedItemProductName": variant.name,
+      "AddedItemQuantity": 1,
+      "AddedItemPrice": variant.price.to_f,
+      "AddedItemURL": variant_url(variant),
+      "AddedItemImageURL": variant_image(variant),
+      "AddedItemCategories": variant_taxons(variant)
+    })
+  end
+
   def product_properties(li)
     line_item_properties(li).merge(
     {
@@ -87,20 +102,24 @@ module KlaviyoTracker
 
   def line_item_properties(li)
     {
-       "ProductID": li.variant_id,
-       "SKU": li.sku,
-       "ProductName": li.name,
-       "Quantity": li.quantity,
-       "ItemPrice": li.price.to_f,
-       "ProductURL": variant_url(li.variant),
-       "ImageURL": variant_image(li.variant),
-       "ProductCategories": variant_taxons(li.variant)
+      "ProductID": li.variant_id,
+      "SKU": li.sku,
+      "ProductName": li.name,
+      "Quantity": li.quantity,
+      "ItemPrice": li.price.to_f,
+      "ProductURL": variant_url(li.variant),
+      "ImageURL": variant_image(li.variant),
+      "ProductCategories": variant_taxons(li.variant)
     }
   end
 
   def customer_properties(order)
+    props = 
     {
-      "$email": order.email,
+      "$email": order.email
+    }
+    props.merge!(
+    {
       "$first_name": order.billing_address.first_name,
       "$last_name": order.billing_address.last_name,
       "$phone_number": "+#{order.billing_address.phone.try(:gsub,/[\s\-\+–\(\)]/,'')}",
@@ -110,7 +129,8 @@ module KlaviyoTracker
       "$zip": order.billing_address.zipcode,
       "$region": order.billing_address.state.try(:name),
       "$country": order.billing_address.country.try(:name)
-    }
+    }) if order.billing_address.present?
+    props
   end
 
   def item_names(order)
