@@ -1,6 +1,6 @@
 Spree::OrdersController.class_eval do
 
-  after_action :track_added_to_cart, :only => [:populate], :if => proc {Rails.env.production?}
+  after_action :track_added_to_cart, :only => [:populate]
 
   def track_added_to_cart
     order    = current_order

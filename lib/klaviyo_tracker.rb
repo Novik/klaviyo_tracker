@@ -9,6 +9,7 @@ module KlaviyoTracker
   extend self
 
   mattr_accessor :api_key
+  mattr_accessor :force, defailt: false
   @@client = nil
 
   REASON_MESSAGES = 
@@ -44,7 +45,7 @@ module KlaviyoTracker
             )
           end
         end
-    end
+    end if Rails.env.production? || @@force
   end
 
   private
